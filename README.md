@@ -61,7 +61,8 @@ The configuration file is a JSON file with fields like this:
     "columns"  : {
         "log"  : "*",
         "name" : "name",
-        "unix" : "time"
+        "unix" : "time",
+        "url"  : "req.url"
     }
 }
 ```
@@ -71,9 +72,10 @@ Create a table to save this that looks like this:
 ```
 CREATE TABLE logs (
     log_id INT NOT NULL AUTO_INCREMENT,
+    log JSON,
     unix BIGINT UNSIGNED,
     name VARCHAR(64),
-    log JSON,
+    url VARCHAR(64),
 
     PRIMARY KEY ( log_id )
 )

@@ -214,16 +214,59 @@ function make_query_engine(config, cb) {
 
   if(!cols.length) return cb(null, passthrough_engine_1(passthroughs))
 
+  if(!passthroughs.length) return cb(null, json_engine_1(cols, jsonkeys))
+
+
+  function json_engine_1(cols_, jsonkeys) {
+    let cols = cols_.join()
+    let vals = cols_.map(c => '?').join()
+    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    return function(chunk, dbpool, cb) {
+      try {
+        let logdata = JSON.parse(chunk)
+        let data = []
+        for(let i = 0;i < jsonkeys.length;i++) {
+          data.push(jsonPath(jsonkeys[i], logdata, config.delimiter))
+        }
+        dbpool.query(q, data, (err) => cb(err))
+      } catch(e) {
+        errstack(e)
+        cb()
+      }
+    }
+  }
+
   function passthrough_engine_1(passthroughs) {
     let cols = passthroughs.join()
     let vals = passthroughs.map(p => '?').join()
     let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
     return function(chunk, dbpool, cb) {
       let data = passthroughs.map(p => chunk.toString())
-      dbpool.query(q, data, cb)
+      dbpool.query(q, data, (err) => cb(err))
     }
   }
 
+}
+
+/*      problem/
+ * Given a "path" into a Json object
+ *      "a.b.c"
+ *      "a.f.3.g"
+ * return the associated value
+ *
+ *      way/
+ * Split the input string by the delimiter and
+ * fetch each of the parts
+ */
+function jsonPath(path_, obj_, delim_) {
+    if(!delim_) delim_ = '.'
+    path_ = path_.split(delim_)
+    for(let i = 0;i < path_.length;i++) {
+        let p = path_[i]
+        obj_ = obj_[p]
+        if(obj_ === null || obj_ === undefined) return
+    }
+    return obj_
 }
 
 /*    outcome/
