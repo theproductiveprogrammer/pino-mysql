@@ -94,6 +94,23 @@ Instead if you are only interested in particular fields, I've got your
 back there too! `pino-mysql` will extract and save particular log fields
 into the columns (by using the field paths `"name"`, `"req.url"`, etc).
 
+### Using a custom delimiter
+
+If you have a dotted field in your log input that you would like to
+parse, you can use provide a custom delimiter in the configuration JSON:
+
+```
+...
+    "table"    : "logs",
+    "columns"  : {
+        ...
+        "url"  : "req-url",
+        "xid"  : "dotted.field-subfield"
+    },
+    "delimiter": "-"
+}
+```
+
 
 ### HTH & Enjoy! :-)
 
