@@ -1,6 +1,6 @@
 {
   "name": "pino-mysql",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A Pino Transport for MySQL Databases",
   "main": "index.js",
   "scripts": {
