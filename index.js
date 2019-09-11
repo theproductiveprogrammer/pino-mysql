@@ -216,6 +216,29 @@ function make_query_engine(config, cb) {
 
   if(!passthroughs.length) return cb(null, json_engine_1(cols, jsonkeys))
 
+  cb(null, complex_engine_1(passthroughs, cols, jsonkeys))
+
+
+  function complex_engine_1(passthroughs, cols_, jsonkeys) {
+    let cols_all = passthroughs.concat(cols_)
+    let cols = cols_all.join()
+    let vals = cols_all.map(c => '?').join()
+    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    let fallback = passthrough_engine_1(passthroughs)
+    return function(chunk, dbpool, cb) {
+      try {
+        let logdata = JSON.parse(chunk)
+        let data = passthroughs.map(p => chunk.toString())
+        for(let i = 0;i < jsonkeys.length;i++) {
+          data.push(jsonPath(jsonkeys[i], logdata, config.delimiter))
+        }
+        dbpool.query(q, data, (err) => cb(err))
+      } catch(e) {
+        errstack(e)
+        fallback(chunk, dbpool, cb)
+      }
+    }
+  }
 
   function json_engine_1(cols_, jsonkeys) {
     let cols = cols_.join()
