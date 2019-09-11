@@ -1,0 +1,13 @@
+{
+    "host"     : "localhost",
+    "user"     : "me",
+    "password" : "secret",
+    "database" : "my_db",
+    "table"    : "log_table",
+    "columns"  : {
+        "log"  : "*",
+        "name" : "name",
+        "unix" : "time"
+    }
+}
+

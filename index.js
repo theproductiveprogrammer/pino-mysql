@@ -1,0 +1,262 @@
+'use strict'
+const fs = require('fs')
+const path = require('path')
+
+const mysql = require('mysql')
+
+const split = require('split2')
+const pump = require('pump')
+const through = require('through2')
+
+const pkg = require('./package.json')
+
+/*      outcome/
+ * If we have an error we simply passthrough the input stream and don't
+ * attempt to save into the database. Otherwise we save the stream to
+ * the database as requested and also echo to console (unless --quiet)
+ */
+const transport = (err, args, config, qe, dbpool) => {
+  return through(function (chunk, enc, cb) {
+    if(err) {
+      echo(chunk.toString())
+      errout(err)
+      cb()
+    } else {
+      if(!args.quiet) echo(chunk.toString())
+      qe(chunk, dbpool, (err) => {
+        if(err) errstack(err)
+        cb()
+      })
+    }
+  })
+}
+
+const echo = console.log
+const errstack = console.error
+const errout = (err) => {
+  console.error(make_big_and_bold_1(err))
+
+  /*    outcome/
+   * Make sure the error has enough details and stands out so it can't
+   * be missed by the user
+   */
+  function make_big_and_bold_1(err) {
+    let common = ' - not inserting into database. Use --help for info.'
+    return `\n******** ${pkg.name} ERROR\n${err}${common}\n********\n`
+  }
+}
+
+/*    problem/
+ * We need to load the configuration file that gives us the database
+ * parameters to connect. This is a JSON file with this format:
+ *  {
+ *      "host"     : "localhost",
+ *      "user"     : "me",
+ *      "password" : "secret",
+ *      "database" : "my_db",
+ *      "table"    : "log_table",
+ *      "columns"  : {
+ *          "log"  : "*",
+ *          "name" : "name",
+ *          "unix" : "time"
+ *      }
+ *  }
+ *
+ *      way/
+ * Read the file in and parse it as a JSON
+ */
+function loadConfig(args, cb) {
+  if(!args.config) return cb('Database configuration not provided')
+  else fs.readFile(args.config, 'utf8', (err, data) => {
+    if(err) {
+      errstack(err)
+      cb('Failed reading configuration file')
+    } else {
+      try {
+        let config = JSON.parse(data)
+        cb(null, config)
+      } catch(e) {
+        errstack(e)
+        cb('Failed to understand config JSON')
+      }
+    }
+  })
+}
+
+/*    outcome/
+ * Load the command-line arguments
+ */
+function loadArgs() {
+  let args = {}
+  for(let i = 0;i < process.argv.length;i++) {
+    let arg = process.argv[i]
+    if(arg == '-q' || arg == '--quiet') args.quiet = true
+    if(arg == '-c' || arg == '--config') {
+      i++
+      args.config = process.argv[i]
+    }
+    if(arg == '-h' || arg == '--help') args.help = true
+  }
+  return args
+}
+
+/*    outcome/
+ * Load the arguments from the command line and either show help or
+ * begin processing as required. then load the database
+ */
+function main() {
+  let args = loadArgs()
+  if(args.help) showHelp()
+  else begin(args)
+}
+
+/*    outcome/
+ * Load the configuration, create the query engine, connect to the
+ * database, then start the pump from stdin to the database.
+ */
+function begin(args) {
+  loadConfig(args, (err, config) => {
+    let db = "TODO"
+    let qe = "TODO"
+    if(err) {
+      errout(err)
+      pump(process.stdin, split(), transport(err, args))
+    } else {
+      make_query_engine(config, (err, qe) => {
+        if(err) {
+          errout(err)
+          pump(process.stdin, split(), transport(err, args))
+        } else {
+          try {
+            let dbpool = mysql.createPool(config)
+            pump(process.stdin, split(), transport(err,args,config,qe,dbpool))
+          } catch(e) {
+            errout(err)
+            pump(process.stdin, split(), transport(err, args))
+          }
+        }
+      })
+    }
+  })
+}
+
+/*    problem/
+ * Given the table and set of columns we need to create an insert
+ * query that matches and a function that can extract the required
+ * values from the JSON string and do the insert.
+ *
+ *    examples/
+ *
+ * table: logs
+ * columns: {
+ *    name: name,
+ *    unix: time
+ * }
+ *    ==> INSERT INTO logs(name,unix) VALUES(?,?)
+ *        [json.name, json.time]
+ *    ==> (if json parsing fails - just fail)
+ *
+ * table: logs
+ * columns: {
+ *    log: *,
+ *    name: name,
+ *    unix: time
+ * }
+ *    ==> INSERT INTO logs(log,name,unix) VALUES(?,?,?)
+ *        [jsonstr, json.name, json.time]
+ *    ==> (if json parsing fails)
+ *        INSERT INTO logs(log) VALUES(?)
+ *        [jsonstr]
+ *
+ * table: logs
+ * columns: {
+ *    log: *,
+ *    log2: *
+ * }
+ *    ==> (no JSON parsing needed)
+ *        INSERT INTO logs(log,log2) VALUES(?,?)
+ *        [jsonstr,jsonstr]
+ *        -- Usually there will only be one column to fill.
+ *           This example shows two just for clarity on how
+ *           it should behave in odd cases.
+ *
+ *
+ *      way/
+ * Let's call '*' as a passthrough column.
+ *
+ * If we have all passthrough columns then we create an engine
+ * that needs no JSON parsing and just inserts the values into the
+ * table column(s) (there will usually be only one)
+ *
+ * If we have no passthrough columns then we create an engine
+ * that does JSON parsing and inserts the values into the table columns.
+ *
+ * If we have both then we create an engine that tries to do JSON
+ * parsing and - if it fails - invokes an engine that handles only the
+ * passthrough columns otherwise works normally.
+ */
+function make_query_engine(config, cb) {
+  if(!config.table) return cb('No table provided in config')
+  if(!config.columns) return cb('No columns provided in config')
+  let cols = []
+  let jsonkeys = []
+  let passthroughs = []
+  for(let k in config.columns) {
+    let jsonkey = config.columns[k]
+    if(jsonkey == '*') {
+      passthroughs.push(k)
+    } else {
+      cols.push(k)
+      jsonkeys.push(jsonkey)
+    }
+  }
+  if(!cols.length && !passthroughs.length) return cb('No columns provided in config')
+
+  if(!cols.length) return cb(null, passthrough_engine_1(passthroughs))
+
+  function passthrough_engine_1(passthroughs) {
+    let cols = passthroughs.join()
+    let vals = passthroughs.map(p => '?').join()
+    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    return function(chunk, dbpool, cb) {
+      let data = passthroughs.map(p => chunk.toString())
+      dbpool.query(q, data, cb)
+    }
+  }
+
+}
+
+/*    outcome/
+ * Get package version and show help to user.
+ */
+function showHelp() {
+  echo(`Usage:
+${pkg.name} -c database-config.json [-q|--quiet] [-h|--help]
+
+  where
+
+database-config.json:
+  is a JSON file containing the database connection parameters
+  and a table/column mapping for data to be inserted like so:
+    {
+        "host"     : "localhost",
+        "user"     : "me",
+        "password" : "secret",
+        "database" : "my_db",
+        "table"    : "log_table",
+        "columns"  : {
+            "log"  : "*",
+            "name" : "name",
+            "unix" : "time"
+        }
+    }
+
+See accompanying README file for more details.
+v${pkg.version}`)
+
+}
+
+/*    understand/
+ * Main entry point for our program
+ */
+main()
