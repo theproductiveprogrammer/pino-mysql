@@ -17,20 +17,8 @@ save your logs into a [MySql](https://www.mysql.com/) (or [MariaDB](https://mari
 2. Create a configuration file that tells us db connection and table
    details: `db-configuration.json`
 3. Pipe the log output and watch it pour into your database:
-    `run <my-app> | npx pino-mysql -c db-configuration.json`
+    `run <my-app> | pino-mysql -c db-configuration.json`
 
-
-## Using npx
-
-To use this transport the command is simple:
-
-```
-    run <my-app> | npx pino-mysql -c db-configuration.json
-```
-
-And yes that is `npx` (it's not a typo). Many are unaware of the lovely
-[npx](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b)
-which comes installed by default and I highly recommend using.
 
 ## Using pipes
 
@@ -41,7 +29,7 @@ that it does not interfere with the running of the application.
 pipes so we can do nice things like:
 
 ```
-    run <my-app> | npx pino-mysql -c db-configuration.json | npx pino-pretty
+    run <my-app> | pino-mysql -c db-configuration.json | npx pino-pretty
 ```
 
 Use the `-q|--quiet` configuration switch if you do not want this
@@ -109,6 +97,22 @@ parse, you can use provide a custom delimiter in the configuration JSON:
     },
     "delimiter": "-"
 }
+```
+
+## Using npx
+
+Once installed, using this transport is simply:
+
+```
+    run <my-app> | pino-mysql -c db-configuration.json
+```
+
+If you prefer using
+[npx](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b)
+that works as well:
+
+```
+    run <my-app> | npx pino-mysql -c db-configuration.json
 ```
 
 
