@@ -224,7 +224,7 @@ function make_query_engine(config, cb) {
     let cols_all = passthroughs.concat(cols_)
     let cols = cols_all.join()
     let vals = cols_all.map(c => '?').join()
-    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    let q = `INSERT IGNORE INTO ${config.table}(${cols}) VALUES(${vals})`
     let fallback = passthrough_engine_1(passthroughs)
     return function(chunk, dbpool, cb) {
       try {
@@ -244,7 +244,7 @@ function make_query_engine(config, cb) {
   function json_engine_1(cols_, jsonkeys) {
     let cols = cols_.join()
     let vals = cols_.map(c => '?').join()
-    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    let q = `INSERT IGNORE INTO ${config.table}(${cols}) VALUES(${vals})`
     return function(chunk, dbpool, cb) {
       try {
         let logdata = JSON.parse(chunk)
@@ -263,7 +263,7 @@ function make_query_engine(config, cb) {
   function passthrough_engine_1(passthroughs) {
     let cols = passthroughs.join()
     let vals = passthroughs.map(p => '?').join()
-    let q = `INSERT INTO ${config.table}(${cols}) VALUES(${vals})`
+    let q = `INSERT IGNORE INTO ${config.table}(${cols}) VALUES(${vals})`
     return function(chunk, dbpool, cb) {
       let data = passthroughs.map(p => chunk.toString())
       dbpool.query(q, data, (err) => cb(err))
