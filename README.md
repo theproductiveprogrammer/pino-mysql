@@ -29,7 +29,7 @@ that it does not interfere with the running of the application.
 pipes so we can do nice things like:
 
 ```
-    run <my-app> | pino-mysql -c db-configuration.json | npx pino-pretty
+    run <my-app> | pino-mysql -c db-configuration.json | pino-pretty
 ```
 
 Use the `-q|--quiet` configuration switch if you do not want this
