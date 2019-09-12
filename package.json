@@ -2,9 +2,12 @@
   "name": "pino-mysql",
   "version": "1.0.0",
   "description": "A Pino Transport for MySQL Databases",
-  "main": "index.js",
+  "main": "pino-mysql",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "pino-mysql": "./pino-mysql"
   },
   "author": "charles.lobo@gmail.com",
   "license": "ISC",
