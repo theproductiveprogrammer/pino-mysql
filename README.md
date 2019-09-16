@@ -81,6 +81,7 @@ allow you to query your JSON directly in SQL. Amazing!
 Instead if you are only interested in particular fields, I've got your
 back there too! `pino-mysql` will extract and save particular log fields
 into the columns (by using the field paths `"name"`, `"req.url"`, etc).
+You can see examples of this in the definition of "url" above.
 
 ### Using a custom delimiter
 
@@ -98,6 +99,20 @@ parse, you can use provide a custom delimiter in the configuration JSON:
     "delimiter": "-"
 }
 ```
+
+### Using MySQL Generated Columns with JSON
+
+Mysql also has the ability to extract fields and if you prefer it done
+by the DB you can define a
+['generated
+column'](https://dev.mysql.com/doc/refman/5.7/en/create-table-generated-columns.html)
+that extracts the given field instead:
+
+```
+    req_url VARCHAR(128) GENERATED ALWAYS as ( json_unquote(json_extract(log, '$.req.url')) ) STORED
+
+```
+
 
 ## Using npx
 
