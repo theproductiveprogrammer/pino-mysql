@@ -4,7 +4,7 @@
   "description": "A Pino Transport for MySQL Databases",
   "main": "pino-mysql",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-server.js | node . -c config.sample"
   },
   "bin": {
     "pino-mysql": "./pino-mysql"
@@ -17,7 +17,9 @@
     "split2": "^3.1.1",
     "through2": "^3.0.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "pino-http": "^5.8.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/theproductiveprogrammer/pino-mysql.git"
