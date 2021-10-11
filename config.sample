@@ -3,7 +3,7 @@
     "user"     : "me",
     "password" : "secret",
     "database" : "my_db",
-    "table"    : "log_table",
+    "table"    : "logs",
     "columns"  : {
         "log"  : "*",
         "name" : "name",
